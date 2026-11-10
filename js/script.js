@@ -358,7 +358,10 @@ async function dismissLoadingMessage(requestId, keepVisibleForMinimum) {
   loadingMessage.classList.add("is-fading-out");
   await waitForOpacityTransition(loadingMessage, LOADING_FADE_OUT_MS);
 
-  if (requestId === latestApodRequestId) loadingMessage.remove();
+  if (requestId === latestApodRequestId) {
+    loadingMessage.remove();
+    gallery.classList.remove("is-loading");
+  }
 }
 
 function waitForOpacityTransition(element, duration) {
@@ -541,6 +544,7 @@ function showGalleryMessage(message, isError = false, isLoading = false) {
   const paragraph = document.createElement("p");
 
   placeholder.className = isLoading ? "placeholder loading-placeholder" : "placeholder";
+  gallery.classList.toggle("is-loading", isLoading);
   placeholder.setAttribute("role", isError ? "alert" : "status");
   if (isLoading) {
     const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");

@@ -455,7 +455,7 @@ button:hover span {
   top: 24px;
   right: 0;
   left: 0;
-  background: rgba(19, 19, 43, 0.96);
+  background: #13132b;
 }
 
 .loading-placeholder.is-fading-out {
@@ -502,7 +502,12 @@ button:hover span {
   background: #15152b;
   box-shadow: 0 16px 38px rgba(0, 0, 0, 0.25);
   isolation: isolate;
-  transition: transform 260ms ease, border-color 260ms ease, box-shadow 260ms ease;
+  transition: opacity 500ms ease, transform 260ms ease, border-color 260ms ease, box-shadow 260ms ease;
+}
+
+.gallery.is-loading .gallery-item {
+  visibility: hidden;
+  opacity: 0;
 }
 
 .gallery-item:hover,
