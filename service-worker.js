@@ -1,7 +1,10 @@
-const SHELL_CACHE_NAME = "nasa-space-explorer-shell-v1";
+const SHELL_CACHE_NAME = "nasa-space-explorer-shell-v2";
 const SHELL_CACHE_PREFIX = "nasa-space-explorer-shell-";
 const APOD_CACHE_NAME = "nasa-space-explorer-apod-v1";
 const APOD_CACHE_LIMIT = 40;
+const IMAGE_CACHE_NAME = "nasa-space-explorer-images-v1";
+const IMAGE_CACHE_PREFIX = "nasa-space-explorer-images-";
+const IMAGE_CACHE_LIMIT = 60;
 const APOD_ORIGIN = "https://science.nasa.gov";
 const APOD_PATH = "/wp-json/wp/v2/apod-basic";
 
@@ -10,7 +13,7 @@ const APP_SHELL_PATHS = [
   "./index.html",
   "./style.css",
   "./js/dateRange.js",
-  "./js/script.js?v=sw-v1",
+  "./js/script.js?v=sw-v2",
   "./manifest.json",
   "./img/nasa-worm-logo.png",
   "./img/nasa-space-explorer-icon-180-final.png",
@@ -36,10 +39,24 @@ self.addEventListener("activate", (event) => {
     const oldShellCaches = cacheNames.filter((cacheName) =>
       cacheName.startsWith(SHELL_CACHE_PREFIX) && cacheName !== SHELL_CACHE_NAME
     );
+    const oldImageCaches = cacheNames.filter((cacheName) =>
+      cacheName.startsWith(IMAGE_CACHE_PREFIX) && cacheName !== IMAGE_CACHE_NAME
+    );
 
-    await Promise.all(oldShellCaches.map((cacheName) => caches.delete(cacheName)));
+    await Promise.all([
+      ...oldShellCaches.map((cacheName) => caches.delete(cacheName)),
+      ...oldImageCaches.map((cacheName) => caches.delete(cacheName))
+    ]);
     await self.clients.claim();
   })());
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type !== "image-load-failed" || typeof event.data.url !== "string") {
+    return;
+  }
+
+  event.waitUntil(deleteFailedImage(event.data.url));
 });
 
 self.addEventListener("fetch", (event) => {
@@ -56,10 +73,70 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (request.destination === "image" && requestUrl.origin !== self.location.origin) {
+    event.respondWith(cacheFirstImage(request));
+    return;
+  }
+
   if (requestUrl.origin === self.location.origin && APP_SHELL_URLS.has(request.url)) {
-    event.respondWith(cacheFirstAppShell(request));
+    event.respondWith(
+      request.mode === "navigate"
+        ? networkFirstAppShell(request)
+        : cacheFirstAppShell(request)
+    );
   }
 });
+
+async function cacheFirstImage(request) {
+  let cache;
+
+  try {
+    cache = await caches.open(IMAGE_CACHE_NAME);
+    const cachedResponse = await cache.match(request);
+
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+  } catch (error) {
+    console.warn("Unable to read the NASA image cache:", error);
+  }
+
+  const response = await fetch(request);
+
+  if (cache && isUsableImageResponse(response)) {
+    try {
+      await cache.put(request, response.clone());
+      await trimImageCache(cache);
+    } catch (error) {
+      console.warn("Unable to save the NASA image to cache:", error);
+    }
+  }
+
+  return response;
+}
+
+function isUsableImageResponse(response) {
+  if (response.type === "opaque") {
+    return true;
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  return response.ok && contentType.toLowerCase().startsWith("image/");
+}
+
+async function deleteFailedImage(url) {
+  try {
+    const imageUrl = new URL(url);
+    if (!["http:", "https:"].includes(imageUrl.protocol) || imageUrl.origin === self.location.origin) {
+      return;
+    }
+
+    const cache = await caches.open(IMAGE_CACHE_NAME);
+    await cache.delete(imageUrl.href, { ignoreVary: true });
+  } catch (error) {
+    console.warn("Unable to remove a failed NASA image from cache:", error);
+  }
+}
 
 async function cacheFirstAppShell(request) {
   const cache = await caches.open(SHELL_CACHE_NAME);
@@ -72,6 +149,33 @@ async function cacheFirstAppShell(request) {
   const response = await fetch(request);
   if (response.ok) {
     await cache.put(request, response.clone());
+  }
+
+  return response;
+}
+
+async function networkFirstAppShell(request) {
+  const cache = await caches.open(SHELL_CACHE_NAME);
+  let response;
+
+  try {
+    response = await fetch(request);
+  } catch (error) {
+    const cachedResponse = await cache.match(request);
+
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+
+    throw error;
+  }
+
+  if (response.ok) {
+    try {
+      await cache.put(request, response.clone());
+    } catch (error) {
+      console.warn("Unable to update the cached app shell:", error);
+    }
   }
 
   return response;
@@ -116,6 +220,16 @@ async function networkFirstApod(request, clientId) {
 async function trimApodCache(cache) {
   const cachedRequests = await cache.keys();
   const excessCount = cachedRequests.length - APOD_CACHE_LIMIT;
+
+  if (excessCount > 0) {
+    const oldestRequests = cachedRequests.slice(0, excessCount);
+    await Promise.all(oldestRequests.map((request) => cache.delete(request)));
+  }
+}
+
+async function trimImageCache(cache) {
+  const cachedRequests = await cache.keys();
+  const excessCount = cachedRequests.length - IMAGE_CACHE_LIMIT;
 
   if (excessCount > 0) {
     const oldestRequests = cachedRequests.slice(0, excessCount);

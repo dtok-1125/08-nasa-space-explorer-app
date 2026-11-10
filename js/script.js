@@ -237,7 +237,10 @@ async function getSpaceImages() {
           thumbnail.alt = "";
           thumbnail.setAttribute("aria-hidden", "true");
           thumbnail.loading = "lazy";
-          thumbnail.addEventListener("error", () => thumbnail.remove(), { once: true });
+          thumbnail.addEventListener("error", () => {
+            notifyServiceWorkerImageFailure(thumbnail.currentSrc || thumbnail.src);
+            thumbnail.remove();
+          }, { once: true });
           thumbnail.src = thumbnailUrl;
           card.appendChild(thumbnail);
         }
@@ -271,6 +274,7 @@ async function getSpaceImages() {
         const exploreButton = document.createElement("button");
 
         image.addEventListener("error", () => {
+          notifyServiceWorkerImageFailure(image.currentSrc || image.src);
           image.replaceWith(createImageFallback("gallery-image-unavailable"));
         }, { once: true });
         image.src = item.hdurl;
@@ -341,6 +345,7 @@ function openDiscovery(item, trigger) {
   modalImageFallback = null;
   modalImage.hidden = false;
   modalImageErrorHandler = () => {
+    notifyServiceWorkerImageFailure(modalImage.currentSrc || modalImage.src);
     modalImage.hidden = true;
     modalImageFallback = createImageFallback("modal-image-unavailable");
     modalImage.insertAdjacentElement("afterend", modalImageFallback);
@@ -376,6 +381,13 @@ function createImageFallback(className) {
   placeholder.append(icon, message);
 
   return placeholder;
+}
+
+function notifyServiceWorkerImageFailure(url) {
+  navigator.serviceWorker?.controller?.postMessage({
+    type: "image-load-failed",
+    url
+  });
 }
 
 function getPlainText(html) {
