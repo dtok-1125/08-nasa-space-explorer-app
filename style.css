@@ -450,6 +450,7 @@ button:hover span {
 .video-card {
   display: grid;
   width: min(100%, 300px);
+  aspect-ratio: auto;
   justify-self: center;
   place-items: center;
   padding: 20px;
@@ -458,7 +459,29 @@ button:hover span {
     linear-gradient(145deg, #17162f, #101124 72%);
 }
 
+.video-card .video-thumbnail {
+  position: absolute;
+  z-index: -1;
+  top: -13%;
+  left: -25%;
+  width: 150%;
+  height: 150%;
+  object-position: 91% top;
+  filter: brightness(0.55);
+}
+
+.video-card:has(.video-thumbnail)::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 9, 22, 0.12) 8%, rgba(8, 9, 22, 0.28) 42%, rgba(8, 9, 22, 0.8) 100%);
+  content: "";
+  pointer-events: none;
+}
+
 .video-card-content {
+  position: relative;
+  z-index: 1;
   display: grid;
   justify-items: center;
   gap: 11px;
@@ -492,10 +515,10 @@ button:hover span {
 }
 
 .video-card .gallery-title {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
   max-width: 100%;
-  -webkit-line-clamp: 3;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
   white-space: normal;
 }
 

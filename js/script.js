@@ -76,7 +76,7 @@ async function getSpaceImages() {
 
   getImagesButton.disabled = true;
   showGalleryMessage("Receiving transmissions from the cosmos…", false, true);
-  const minimumLoadingTime = new Promise((resolve) => window.setTimeout(resolve, 1000));
+  const minimumLoadingTime = new Promise((resolve) => window.setTimeout(resolve, 3000));
 
   try {
     const nasaUrl = new URL("https://science.nasa.gov/wp-json/wp/v2/apod-basic");
@@ -167,9 +167,21 @@ async function getSpaceImages() {
         const content = document.createElement("div");
         const playIcon = document.createElement("span");
         const label = document.createElement("span");
+        const thumbnailUrl = typeof item.hdurl === "string" ? item.hdurl.trim() : "";
         const postUrl = getApodPostUrl(item);
 
         content.className = "video-card-content";
+        if (thumbnailUrl) {
+          const thumbnail = document.createElement("img");
+          thumbnail.className = "video-thumbnail";
+          thumbnail.alt = "";
+          thumbnail.setAttribute("aria-hidden", "true");
+          thumbnail.loading = "lazy";
+          thumbnail.addEventListener("error", () => thumbnail.remove(), { once: true });
+          thumbnail.src = thumbnailUrl;
+          card.appendChild(thumbnail);
+        }
+
         playIcon.className = "video-play-icon";
         playIcon.textContent = "▶";
         playIcon.setAttribute("aria-hidden", "true");
