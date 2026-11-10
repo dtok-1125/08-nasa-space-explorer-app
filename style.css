@@ -69,6 +69,53 @@ body::before {
   border-bottom: 1px solid rgba(202, 194, 255, 0.1);
 }
 
+.connection-status {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px auto 0;
+  padding: 8px 13px;
+  border: 1px solid rgba(122, 220, 166, 0.3);
+  border-radius: 999px;
+  color: #d7ffe5;
+  background: rgba(37, 112, 71, 0.16);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.connection-status::before {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  margin-top: 0.45em;
+  border-radius: 50%;
+  background: #76dba7;
+  content: "";
+}
+
+.connection-status.is-offline {
+  border-color: rgba(238, 194, 116, 0.36);
+  color: #ffe6bc;
+  background: rgba(122, 79, 24, 0.2);
+}
+
+.connection-status.is-offline::before {
+  background: #f0c77b;
+}
+
+.connection-status.is-error {
+  border-color: rgba(255, 139, 151, 0.4);
+  color: #ffd9dd;
+  background: rgba(116, 35, 51, 0.24);
+}
+
+.connection-status.is-error::before {
+  background: #ff8997;
+}
+
 .brand {
   display: inline-flex;
   align-items: center;

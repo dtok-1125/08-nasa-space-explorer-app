@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>NASA Space Explorer</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./img/nasa-space-explorer-icon-180-final.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet" />
@@ -12,12 +14,13 @@
 <body>
   <div class="container">
     <header class="site-header">
-      <a class="brand" href="/" aria-label="NASA Space Explorer home">
+      <a class="brand" href="./" aria-label="NASA Space Explorer home">
         <img src="img/nasa-worm-logo.png" alt="NASA" class="logo" />
         <span class="brand-divider" aria-hidden="true"></span>
         <span class="brand-name">SPACE EXPLORER</span>
       </a>
     </header>
+    <p id="connection-status" class="connection-status is-online" role="status" aria-live="polite">Checking connection...</p>
 
     <main>
       <section class="hero" aria-labelledby="page-title">
@@ -98,6 +101,6 @@
   </dialog>
 
   <script src="js/dateRange.js"></script>
-  <script src="js/script.js?v=2c094182"></script>
+  <script src="js/script.js?v=sw-v1"></script>
 </body>
 </html>

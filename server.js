@@ -3,12 +3,13 @@ const http = require("node:http");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 
-const PORT = 3001;
+const PORT = Number(process.env.PORT) || 3001;
 const STATIC_ROOT = __dirname;
 const MIME_TYPES = {
   ".html": "text/html",
   ".css": "text/css",
   ".js": "text/javascript",
+  ".json": "application/manifest+json",
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
   ".png": "image/png"
@@ -138,6 +139,8 @@ const server = http.createServer(async (req, res) => {
 
   if (
     relativePath !== "index.html" &&
+    relativePath !== "manifest.json" &&
+    relativePath !== "service-worker.js" &&
     relativePath !== "style.css" &&
     !relativePath.startsWith(`js${path.sep}`) &&
     !relativePath.startsWith(`img${path.sep}`)

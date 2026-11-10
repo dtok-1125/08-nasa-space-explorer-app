@@ -2,6 +2,7 @@
 const startInput = document.getElementById('startDate');
 const endInput = document.getElementById('endDate');
 const gallery = document.getElementById("gallery");
+const connectionStatus = document.getElementById("connection-status");
 const discoveryModal = document.getElementById("discovery-modal");
 const modalCloseButton = discoveryModal.querySelector(".modal-close");
 const modalImage = discoveryModal.querySelector(".modal-image");
@@ -11,6 +12,7 @@ const modalExplanation = document.getElementById("modal-explanation");
 let discoveryTrigger = null;
 let previousBodyOverflow = "";
 let latestApodRequestId = 0;
+const cachedApodRequestUrls = new Set();
 const spaceFacts = [
   "Venus is the hottest planet in our solar system, with surface temperatures around 467°C (872°F).",
   "Venus spins in the opposite direction from most planets.",
@@ -35,6 +37,41 @@ const spaceFacts = [
 // - Restrict dates to NASA's image archive (starting from 1995)
 setupDateInputs(startInput, endInput);
 showRandomSpaceFact();
+updateConnectionStatus();
+
+window.addEventListener("online", () => {
+  setConnectionStatus("Connection restored. NASA will be checked on your next request.", "online");
+});
+
+window.addEventListener("offline", () => {
+  setConnectionStatus("Offline. Saved APOD results may be available for previously loaded dates.", "offline");
+});
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    if (event.data?.type === "apod-cache-fallback" && typeof event.data.requestUrl === "string") {
+      cachedApodRequestUrls.add(event.data.requestUrl);
+    }
+  });
+
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js", { scope: "./" })
+      .catch((error) => console.warn("Service worker registration failed:", error));
+  });
+}
+
+function setConnectionStatus(message, state) {
+  connectionStatus.textContent = message;
+  connectionStatus.className = `connection-status is-${state}`;
+}
+
+function updateConnectionStatus() {
+  if (navigator.onLine) {
+    setConnectionStatus("Online", "online");
+  } else {
+    setConnectionStatus("Offline. Saved APOD results may be available for previously loaded dates.", "offline");
+  }
+}
 
 function showRandomSpaceFact() {
   const factText = document.getElementById("space-fact-text");
@@ -64,6 +101,7 @@ function showRandomSpaceFact() {
 
 async function getSpaceImages() {
   const requestId = ++latestApodRequestId;
+  const requestedApodUrls = [];
   const startDate = startInput.value;
   const endDate = endInput.value;
   const getImagesButton = document.querySelector(".filters button");
@@ -75,6 +113,10 @@ async function getSpaceImages() {
   }
 
   getImagesButton.disabled = true;
+  setConnectionStatus(
+    navigator.onLine ? "Contacting NASA..." : "Offline. Looking for saved results for these dates...",
+    navigator.onLine ? "online" : "offline"
+  );
   showGalleryMessage("Receiving transmissions from the cosmos…", false, true);
   const minimumLoadingTime = new Promise((resolve) => window.setTimeout(resolve, 3000));
 
@@ -88,6 +130,7 @@ async function getSpaceImages() {
 
     for (let page = 1; page <= totalPages; page += 1) {
       nasaUrl.searchParams.set("page", String(page));
+      requestedApodUrls.push(nasaUrl.href);
       const response = await fetch(nasaUrl);
       if (requestId !== latestApodRequestId) return;
 
@@ -109,6 +152,7 @@ async function getSpaceImages() {
               ? data.message
               : `NASA image request failed (HTTP ${response.status}).`;
 
+          setConnectionStatus(message, navigator.onLine ? "error" : "offline");
         showGalleryMessage(message, true);
         return;
       }
@@ -141,13 +185,27 @@ async function getSpaceImages() {
       )
     );
 
+    await minimumLoadingTime;
+    if (requestId !== latestApodRequestId) return;
+
+    const usedCachedApodResponse = requestedApodUrls.some((url) => cachedApodRequestUrls.has(url));
+    if (usedCachedApodResponse) {
+      setConnectionStatus(
+        navigator.onLine
+          ? "NASA could not be reached. Showing saved results for these dates."
+          : "Offline. Showing saved results for these dates.",
+        navigator.onLine ? "error" : "offline"
+      );
+    } else if (navigator.onLine) {
+      setConnectionStatus("Online. NASA results are up to date.", "online");
+    } else {
+      setConnectionStatus("Offline. Showing saved results for these dates.", "offline");
+    }
+
     if (displayEntries.length === 0) {
       showGalleryMessage("NASA returned no displayable astronomy images for this date range.", true);
       return;
     }
-
-    await minimumLoadingTime;
-    if (requestId !== latestApodRequestId) return;
 
     gallery.replaceChildren();
 
@@ -229,11 +287,18 @@ async function getSpaceImages() {
   } catch (error) {
     if (requestId !== latestApodRequestId) return;
     console.error("Unable to load NASA images:", error.message);
+    setConnectionStatus(
+      navigator.onLine
+        ? "NASA could not be reached. Check the connection and try again."
+        : "Offline. No saved results are available for these dates.",
+      navigator.onLine ? "error" : "offline"
+    );
     showGalleryMessage(
       error.message || "Unable to load NASA images right now. Please try again later.",
       true
     );
   } finally {
+    requestedApodUrls.forEach((url) => cachedApodRequestUrls.delete(url));
     if (requestId === latestApodRequestId) {
       getImagesButton.disabled = false;
     }
