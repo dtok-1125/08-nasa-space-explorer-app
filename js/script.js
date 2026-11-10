@@ -356,11 +356,7 @@ async function dismissLoadingMessage(requestId, keepVisibleForMinimum) {
   }
 
   loadingMessage.classList.add("is-fading-out");
-  const fadeOutAnimation = loadingMessage.animate(
-    [{ opacity: 1 }, { opacity: 0 }],
-    { duration: LOADING_FADE_OUT_MS, easing: "ease-out", fill: "forwards" }
-  );
-  await fadeOutAnimation.finished;
+  await waitForOpacityTransition(loadingMessage, LOADING_FADE_OUT_MS);
 
   if (requestId === latestApodRequestId) loadingMessage.remove();
 }

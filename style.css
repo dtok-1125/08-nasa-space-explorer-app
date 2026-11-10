@@ -429,8 +429,15 @@ button:hover span {
 }
 
 .loading-placeholder {
+  justify-self: stretch;
+  width: 100%;
+  max-width: 100%;
+  min-height: clamp(240px, 20vw, 314px);
   opacity: 0;
+  align-items: center;
   border: 2px solid rgba(201, 183, 255, 0.74);
+  padding: 32px;
+  gap: 20px;
   box-shadow:
     0 0 10px rgba(166, 130, 255, 0.34),
     0 0 22px rgba(166, 130, 255, 0.2),
@@ -445,12 +452,16 @@ button:hover span {
 .loading-placeholder-overlay {
   position: absolute;
   z-index: 2;
-  inset: 0;
-  background: rgba(19, 19, 43, 0.94);
+  top: 24px;
+  right: 0;
+  left: 0;
+  background: rgba(19, 19, 43, 0.96);
 }
 
 .loading-placeholder.is-fading-out {
+  opacity: 0;
   pointer-events: none;
+  transition-duration: 500ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
