@@ -208,14 +208,23 @@ async function getSpaceImages() {
       return;
     }
 
-    gallery.querySelector(".loading-placeholder")?.classList.add("loading-placeholder-overlay");
+    await dismissLoadingMessage(
+      requestId,
+      navigator.onLine && !usedCachedApodResponse
+    );
+    if (requestId !== latestApodRequestId) return;
 
-    displayEntries.forEach((item) => {
+    displayEntries.forEach((item, index) => {
       const card = document.createElement("article");
       const title = document.createElement("h2");
       const date = document.createElement("p");
 
-      card.className = "gallery-item";
+      card.className = "gallery-item is-revealing";
+      card.style.setProperty("--reveal-delay", `${index * 65}ms`);
+      card.addEventListener("animationend", () => {
+        card.classList.remove("is-revealing");
+        card.style.removeProperty("--reveal-delay");
+      }, { once: true });
       title.className = "gallery-title";
       title.textContent = item.title || "Astronomy Picture of the Day";
       date.className = "gallery-date";
@@ -292,11 +301,6 @@ async function getSpaceImages() {
 
       gallery.appendChild(card);
     });
-
-    await dismissLoadingMessage(
-      requestId,
-      navigator.onLine && !usedCachedApodResponse
-    );
   } catch (error) {
     if (requestId !== latestApodRequestId) return;
     console.error("Unable to load NASA images:", error.message);
@@ -352,6 +356,7 @@ async function dismissLoadingMessage(requestId, keepVisibleForMinimum) {
 
   if (prefersReducedMotion) {
     loadingMessage.remove();
+    gallery.classList.remove("is-loading");
     return;
   }
 
