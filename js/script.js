@@ -9,6 +9,9 @@ const modalImage = discoveryModal.querySelector(".modal-image");
 const modalDate = discoveryModal.querySelector(".modal-date");
 const modalTitle = document.getElementById("modal-title");
 const modalExplanation = document.getElementById("modal-explanation");
+const MINIMUM_LOADING_READABLE_TIME_MS = 1700;
+const LOADING_FADE_IN_MS = 400;
+const LOADING_FADE_OUT_MS = 500;
 let discoveryTrigger = null;
 let previousBodyOverflow = "";
 let modalImageErrorHandler = null;
@@ -119,8 +122,7 @@ async function getSpaceImages() {
     navigator.onLine ? "Contacting NASA..." : "Offline. Looking for saved results for these dates...",
     navigator.onLine ? "online" : "offline"
   );
-  showGalleryMessage("Receiving transmissions from the cosmos…", false, true);
-  const minimumLoadingTime = new Promise((resolve) => window.setTimeout(resolve, 3000));
+  showGalleryMessage("Transmitting from the Cosmos…", false, true);
 
   try {
     const nasaUrl = new URL("https://science.nasa.gov/wp-json/wp/v2/apod-basic");
@@ -187,9 +189,6 @@ async function getSpaceImages() {
       )
     );
 
-    await minimumLoadingTime;
-    if (requestId !== latestApodRequestId) return;
-
     const usedCachedApodResponse = requestedApodUrls.some((url) => cachedApodRequestUrls.has(url));
     if (usedCachedApodResponse) {
       setConnectionStatus(
@@ -209,7 +208,7 @@ async function getSpaceImages() {
       return;
     }
 
-    gallery.replaceChildren();
+    gallery.querySelector(".loading-placeholder")?.classList.add("loading-placeholder-overlay");
 
     displayEntries.forEach((item) => {
       const card = document.createElement("article");
@@ -293,6 +292,11 @@ async function getSpaceImages() {
 
       gallery.appendChild(card);
     });
+
+    await dismissLoadingMessage(
+      requestId,
+      navigator.onLine && !usedCachedApodResponse
+    );
   } catch (error) {
     if (requestId !== latestApodRequestId) return;
     console.error("Unable to load NASA images:", error.message);
@@ -312,6 +316,73 @@ async function getSpaceImages() {
       getImagesButton.disabled = false;
     }
   }
+}
+
+async function dismissLoadingMessage(requestId, keepVisibleForMinimum) {
+  const loadingMessage = gallery.querySelector(".loading-placeholder");
+  if (!loadingMessage) return;
+
+  await new Promise((resolve) => {
+    window.requestAnimationFrame(() => window.requestAnimationFrame(resolve));
+  });
+  if (!loadingMessage.classList.contains("is-visible")) {
+    loadingMessage.classList.add("is-visible");
+  }
+
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (prefersReducedMotion) {
+    loadingMessage.dataset.fadeInComplete = "true";
+    loadingMessage.dataset.visibleAt = String(performance.now());
+  } else if (loadingMessage.dataset.fadeInComplete !== "true") {
+    await waitForOpacityTransition(loadingMessage, LOADING_FADE_IN_MS);
+  }
+
+  if (requestId !== latestApodRequestId || !loadingMessage.isConnected) return;
+
+  if (keepVisibleForMinimum) {
+    const visibleAt = Number(loadingMessage.dataset.visibleAt) || performance.now();
+    const remainingTime =
+      MINIMUM_LOADING_READABLE_TIME_MS - (performance.now() - visibleAt);
+    if (remainingTime > 0) {
+      await new Promise((resolve) => window.setTimeout(resolve, remainingTime));
+    }
+  }
+
+  if (requestId !== latestApodRequestId || !loadingMessage.isConnected) return;
+
+  if (prefersReducedMotion) {
+    loadingMessage.remove();
+    return;
+  }
+
+  loadingMessage.classList.add("is-fading-out");
+  const fadeOutAnimation = loadingMessage.animate(
+    [{ opacity: 1 }, { opacity: 0 }],
+    { duration: LOADING_FADE_OUT_MS, easing: "ease-out", fill: "forwards" }
+  );
+  await fadeOutAnimation.finished;
+
+  if (requestId === latestApodRequestId) loadingMessage.remove();
+}
+
+function waitForOpacityTransition(element, duration) {
+  return new Promise((resolve) => {
+    let timeoutId;
+
+    function finish(event) {
+      if (event && (event.target !== element || event.propertyName !== "opacity")) return;
+      window.clearTimeout(timeoutId);
+      element.removeEventListener("transitionend", finish);
+      if (element.classList.contains("is-visible") && !element.classList.contains("is-fading-out")) {
+        element.dataset.fadeInComplete = "true";
+        element.dataset.visibleAt = String(performance.now());
+      }
+      resolve();
+    }
+
+    element.addEventListener("transitionend", finish);
+    timeoutId = window.setTimeout(() => finish(), duration + 100);
+  });
 }
 
 function getApodPostUrl(item) {
@@ -492,7 +563,30 @@ function showGalleryMessage(message, isError = false, isLoading = false) {
   }
   paragraph.textContent = message;
   placeholder.appendChild(paragraph);
+  if (isLoading) {
+    placeholder.addEventListener("transitionend", (event) => {
+      if (
+        event.propertyName === "opacity" &&
+        placeholder.classList.contains("is-visible") &&
+        !placeholder.classList.contains("is-fading-out")
+      ) {
+        placeholder.dataset.fadeInComplete = "true";
+        placeholder.dataset.visibleAt = String(performance.now());
+      }
+    });
+  }
   gallery.replaceChildren(placeholder);
+
+  if (isLoading) {
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+      if (!placeholder.isConnected) return;
+      placeholder.classList.add("is-visible");
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        placeholder.dataset.fadeInComplete = "true";
+        placeholder.dataset.visibleAt = String(performance.now());
+      }
+    }));
+  }
 }
 
 const getImagesButton = document.querySelector(".filters button");

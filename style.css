@@ -406,6 +406,7 @@ button:hover span {
 }
 
 .gallery {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
   gap: 22px;
@@ -428,11 +429,35 @@ button:hover span {
 }
 
 .loading-placeholder {
+  opacity: 0;
   border: 2px solid rgba(201, 183, 255, 0.74);
   box-shadow:
     0 0 10px rgba(166, 130, 255, 0.34),
     0 0 22px rgba(166, 130, 255, 0.2),
     inset 0 0 18px rgba(166, 130, 255, 0.08);
+  transition: opacity 400ms ease-out;
+}
+
+.loading-placeholder.is-visible {
+  opacity: 1;
+}
+
+.loading-placeholder-overlay {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background: rgba(19, 19, 43, 0.94);
+}
+
+.loading-placeholder.is-fading-out {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-placeholder {
+    opacity: 1;
+    transition: none;
+  }
 }
 
 .placeholder-icon {

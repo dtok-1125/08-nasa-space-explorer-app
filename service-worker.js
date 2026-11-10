@@ -1,4 +1,4 @@
-const SHELL_CACHE_NAME = "nasa-space-explorer-shell-v2";
+const SHELL_CACHE_NAME = "nasa-space-explorer-shell-v5";
 const SHELL_CACHE_PREFIX = "nasa-space-explorer-shell-";
 const APOD_CACHE_NAME = "nasa-space-explorer-apod-v1";
 const APOD_CACHE_LIMIT = 40;
@@ -13,7 +13,7 @@ const APP_SHELL_PATHS = [
   "./index.html",
   "./style.css",
   "./js/dateRange.js",
-  "./js/script.js?v=sw-v2",
+  "./js/script.js?v=sw-v5",
   "./manifest.json",
   "./img/nasa-worm-logo.png",
   "./img/nasa-space-explorer-icon-180-final.png",
