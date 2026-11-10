@@ -11,6 +11,8 @@ const modalTitle = document.getElementById("modal-title");
 const modalExplanation = document.getElementById("modal-explanation");
 let discoveryTrigger = null;
 let previousBodyOverflow = "";
+let modalImageErrorHandler = null;
+let modalImageFallback = null;
 let latestApodRequestId = 0;
 const cachedApodRequestUrls = new Set();
 const spaceFacts = [
@@ -268,6 +270,9 @@ async function getSpaceImages() {
         const overlay = document.createElement("div");
         const exploreButton = document.createElement("button");
 
+        image.addEventListener("error", () => {
+          image.replaceWith(createImageFallback("gallery-image-unavailable"));
+        }, { once: true });
         image.src = item.hdurl;
         image.alt = item.title || `Astronomy Picture of the Day for ${item.date || "this date"}`;
         image.loading = "lazy";
@@ -329,6 +334,19 @@ function getApodPostUrl(item) {
 
 function openDiscovery(item, trigger) {
   discoveryTrigger = trigger;
+  if (modalImageErrorHandler) {
+    modalImage.removeEventListener("error", modalImageErrorHandler);
+  }
+  modalImageFallback?.remove();
+  modalImageFallback = null;
+  modalImage.hidden = false;
+  modalImageErrorHandler = () => {
+    modalImage.hidden = true;
+    modalImageFallback = createImageFallback("modal-image-unavailable");
+    modalImage.insertAdjacentElement("afterend", modalImageFallback);
+    modalImageErrorHandler = null;
+  };
+  modalImage.addEventListener("error", modalImageErrorHandler, { once: true });
   modalImage.src = item.hdurl;
   modalImage.alt = item.title || `Astronomy Picture of the Day for ${item.date || "this date"}`;
   modalTitle.textContent = item.title || "Astronomy Picture of the Day";
@@ -340,6 +358,24 @@ function openDiscovery(item, trigger) {
   document.body.style.overflow = "hidden";
   discoveryModal.showModal();
   modalCloseButton.focus();
+}
+
+function createImageFallback(className) {
+  const placeholder = document.createElement("div");
+  const icon = document.createElement("span");
+  const message = document.createElement("p");
+  const label = navigator.onLine ? "Image unavailable" : "Image unavailable offline";
+
+  placeholder.className = `image-unavailable ${className}`;
+  placeholder.setAttribute("role", "img");
+  placeholder.setAttribute("aria-label", label);
+  icon.className = "image-unavailable-icon";
+  icon.setAttribute("aria-hidden", "true");
+  icon.textContent = "✦";
+  message.textContent = label;
+  placeholder.append(icon, message);
+
+  return placeholder;
 }
 
 function getPlainText(html) {
